@@ -10,24 +10,23 @@ partial class Program
 
         bool exit = false;
 
-        WeatherInfo data = null;
-
         Console.WriteLine("### puvsSimpleHttpClient ###");
 
         do
         {
-            try
-            {
-                data = await new WeatherDataClient().Get(new Uri(url));
-            }
-            catch(WeatherDataClientException wdcex)
-            {
-                Console.WriteLine($"Error downloading weather data: {wdcex.Message}");
-            }
+            OperationResult<WeatherInfo> operationResult = await new WeatherDataClient().Get(new Uri(url));
 
-            Console.WriteLine();
-            Console.WriteLine($"{DateTime.Now} \n{data}");
-            Console.WriteLine();
+            if(operationResult.IsSuccess) 
+            {
+                WeatherInfo data = operationResult.Result;
+
+                Console.WriteLine();
+                Console.WriteLine($"{DateTime.Now} \n{data}");
+            }
+            else
+            {
+                Console.WriteLine($"Error downloading weather data: {operationResult.ErrorMessage}");
+            }
 
             Console.WriteLine("\nPress any key to repreat or X to exit...");
             ConsoleKeyInfo key = Console.ReadKey(true);

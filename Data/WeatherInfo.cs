@@ -28,7 +28,7 @@ public class WeatherInfo
     /// <summary>
     /// The current weather data.
     /// </summary>
-    public CurrentWeatherData Current_Weather { get; set; }
+    public CurrentWeatherData Current_Weather { get; set; } = new();
 
     public override string ToString()
     {
@@ -37,7 +37,7 @@ public class WeatherInfo
         sb.AppendLine($"Generation Time (ms): {GenerationTime_Ms}");
         
         sb.AppendLine();
-        sb.AppendLine($"{Current_Weather}");
+        sb.Append($"{Current_Weather}");
 
         return sb.ToString();
     }

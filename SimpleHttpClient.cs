@@ -20,78 +20,79 @@ public class SimpleHttpClient
     /// <exception cref="SimpleHttpClientException"></exception>
     public async Task<HttpResponseMessage> Get(Uri url)
     {
-        return await CacheContent(url);
+        return await CacheContent(url,
+                                  30); // seconds
     }
 
     /// <summary>
-    /// Caches the response of the WebService for 1 minute.
+    /// Caches the response of the WebService for a certain number of seconds.
     /// </summary>
     /// <param name="url">The URL to query.</param>
+    /// <param name="retentionTimeInSeconds">The number of seconds to cache the response.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
-    private async Task<HttpResponseMessage> CacheContent(Uri url)
+    private async Task<HttpResponseMessage> CacheContent(Uri url, int retentionTimeInSeconds)
     {
         if (cache.Contains(url.ToString()))
         {
             return (HttpResponseMessage)cache.Get(url.ToString());
         }
 
-        HttpResponseMessage response = await AddResilience(url);
+        HttpResponseMessage response = await AddResilience(url,
+                                                           5,   // retries
+                                                           30); // seconds
 
-        cache.Add(url.ToString(), response, DateTimeOffset.UtcNow.AddMinutes(1));
+        cache.Add(url.ToString(), response, DateTimeOffset.UtcNow.AddSeconds(retentionTimeInSeconds));
 
         return response;
     }
 
     /// <summary>
     /// Adds resilience to the calling of the web service.
+    /// After a certain number of retries, the circuit breaker will open 
+    /// and the web service will not be called anymore in the next 60 seconds.
     /// </summary>
     /// <param name="url">The URL to query.</param>
+    /// <param name="numberOfRetries">The number of retries in case of failure, e.g. timeout.</param>
+    /// <param name="timeoutInSeconds">The timeout in seconds after which a web service call will be terminated.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
-    private async Task<HttpResponseMessage> AddResilience(Uri url)
+    private async Task<HttpResponseMessage> AddResilience(Uri url, int numberOfRetries, int timeoutInSeconds)
     {
         AsyncCircuitBreakerPolicy circuitBreakerPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutRejectedException>()
-            .CircuitBreakerAsync(3, TimeSpan.FromSeconds(30));
+            .CircuitBreakerAsync(2 * numberOfRetries, TimeSpan.FromSeconds(60));
 
         AsyncRetryPolicy retryPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutRejectedException>()
-            .WaitAndRetryAsync(new[]
-            {
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(2),
-                TimeSpan.FromSeconds(4),
-                TimeSpan.FromSeconds(8),
-                TimeSpan.FromSeconds(16)
-            }, (exception, timeSpan, retryCount, context) =>
-            {
-                Console.WriteLine($"Retry attempt {retryCount} failed. Waiting {timeSpan} before retrying...");
-            });
-
-        AsyncRetryPolicy retryPolicy2 = Policy
-            .Handle<HttpRequestException>()
-            .Or<TimeoutRejectedException>()
             .WaitAndRetryAsync(
-                5, // number of retries
+                numberOfRetries,
                 retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // calculate delay based on retry count
                 (exception, timeSpan, retryCount, context) =>
                 {
                     Console.WriteLine($"Retry attempt {retryCount} failed. Waiting {timeSpan} before retrying...");
                 });
 
-        AsyncTimeoutPolicy timeoutPolicy = Policy.TimeoutAsync(30);
+        AsyncTimeoutPolicy timeoutPolicy = Policy.TimeoutAsync(timeoutInSeconds);
 
         HttpResponseMessage response = new HttpResponseMessage(HttpStatusCode.NotImplemented);
 
         try
         {
-            await circuitBreakerPolicy.WrapAsync(timeoutPolicy.WrapAsync(retryPolicy)).ExecuteAsync(async () =>
+            await circuitBreakerPolicy.WrapAsync(retryPolicy.WrapAsync(timeoutPolicy)).ExecuteAsync(async () =>
             {
                 response = await QueryWebService(url);
             });
+        }
+        catch (HttpRequestException hrex)
+        {
+            throw new SimpleHttpClientException("Error querying the web service.", hrex);
+        }
+        catch (TimeoutRejectedException trex)
+        {
+            throw new SimpleHttpClientException("The web service call timed out.", trex);
         }
         catch (BrokenCircuitException bcex)
         {

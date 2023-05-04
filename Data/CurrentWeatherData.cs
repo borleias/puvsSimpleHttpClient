@@ -8,7 +8,7 @@ public class CurrentWeatherData
     /// <summary>
     /// The time of the weather data.
     /// </summary>
-    public string Time { get; set; }
+    public string Time { get; set; } = string.Empty;
 
     /// <summary>
     /// The temperature in degrees Celsius.
@@ -31,7 +31,7 @@ public class CurrentWeatherData
         sb.AppendLine("Current Weather:");
         sb.AppendLine($"Time: {Time}");
         sb.AppendLine($"Temperature: {Temperature}°C");
-        sb.AppendLine($"Wind Speed: {WindSpeed} km/h at {WindDirection} Degrees");
+        sb.Append($"Wind Speed: {WindSpeed} km/h at {WindDirection} Degrees");
         return sb.ToString();
     }
 }
