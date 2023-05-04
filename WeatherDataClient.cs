@@ -8,22 +8,32 @@ public class WeatherDataClient
     /// <summary>
     /// Gets the weather data from the web service.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
     /// <returns>The response as WeatherInfo object.</returns>
     /// <exception cref="WeatherDataClientException"></exception>
     public async Task<OperationResult<WeatherInfo>> Get(Uri url)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
         return await GetContent(url);
     }
 
     /// <summary>
     /// Deserializes the JSON response from the web service.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
     /// <returns>The response as WeatherInfo object.</returns>
     /// <exception cref="WeatherDataClientException"></exception>
     private async Task<OperationResult<WeatherInfo>> GetContent(Uri url)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
         OperationResult<WeatherInfo> result;
 
         try
@@ -107,6 +117,11 @@ public class OperationResult<T> where T : class, new()
     /// <param name="result">The result of the operation.</param>
     public OperationResult(T result)
     {
+        if(result is null)
+        {
+            throw new ArgumentNullException(nameof(result));
+        }
+
         this.Result = result;
         this.ErrorMessage = string.Empty;
     }
@@ -115,19 +130,16 @@ public class OperationResult<T> where T : class, new()
     /// Creates a negative OperationResult based on an error message.
     /// </summary>
     /// <param name="errorMessage">The error message.</param>
-    public OperationResult(string errorMessage)
+    public OperationResult(string errorMessage) : this(errorMessage, new())
     {
-        this.ErrorMessage = errorMessage;
     }
 
     /// <summary>
     /// Creates a negative OperationResult based on an exception.
     /// </summary>
     /// <param name="exception">The covered exception.</param>
-    public OperationResult(Exception exception)
+    public OperationResult(Exception exception) : this(exception.Message, exception)
     {
-        this.Exception = exception;
-        this.ErrorMessage = exception.Message;
     }
 
     /// <summary>
@@ -137,6 +149,16 @@ public class OperationResult<T> where T : class, new()
     /// <param name="exception">The exception.</param>
     public OperationResult(string errorMessage, Exception exception)
     {
+        if (string.IsNullOrWhiteSpace(errorMessage))
+        {
+            throw new ArgumentException($"\"{nameof(errorMessage)}\" darf nicht NULL oder ein Leerraumzeichen sein.", nameof(errorMessage));
+        }
+
+        if(exception is null)
+        {
+            throw new ArgumentNullException(nameof(exception));
+        }
+
         this.Exception = exception;
         this.ErrorMessage = errorMessage;
     }

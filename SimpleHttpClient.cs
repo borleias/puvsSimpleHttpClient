@@ -15,11 +15,16 @@ public class SimpleHttpClient
     /// <summary>
     /// Gets the response of the WebService.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
     public async Task<HttpResponseMessage> Get(Uri url)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
         return await CacheContent(url,
                                   30); // seconds
     }
@@ -27,12 +32,22 @@ public class SimpleHttpClient
     /// <summary>
     /// Caches the response of the WebService for a certain number of seconds.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
-    /// <param name="retentionTimeInSeconds">The number of seconds to cache the response.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
+    /// <param name="retentionTimeInSeconds">The number of seconds to cache the response. Must be zero or larger.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
     private async Task<HttpResponseMessage> CacheContent(Uri url, int retentionTimeInSeconds)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
+        if (retentionTimeInSeconds < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retentionTimeInSeconds));
+        }
+
         if (cache.Contains(url.ToString()))
         {
             return (HttpResponseMessage)cache.Get(url.ToString());
@@ -52,13 +67,28 @@ public class SimpleHttpClient
     /// After a certain number of retries, the circuit breaker will open 
     /// and the web service will not be called anymore in the next 60 seconds.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
-    /// <param name="numberOfRetries">The number of retries in case of failure, e.g. timeout.</param>
-    /// <param name="timeoutInSeconds">The timeout in seconds after which a web service call will be terminated.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
+    /// <param name="numberOfRetries">The number of retries in case of failure, e.g. timeout. Must be larger than Zero.</param>
+    /// <param name="timeoutInSeconds">The timeout in seconds after which a web service call will be terminated. Must be larger than Zero.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
     private async Task<HttpResponseMessage> AddResilience(Uri url, int numberOfRetries, int timeoutInSeconds)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
+        if(numberOfRetries <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(numberOfRetries));
+        }
+
+        if (timeoutInSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeoutInSeconds));
+        }
+
         AsyncCircuitBreakerPolicy circuitBreakerPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutRejectedException>()
@@ -105,11 +135,16 @@ public class SimpleHttpClient
     /// <summary>
     /// Queries a web service and returns the response.
     /// </summary>
-    /// <param name="url">The URL to query.</param>
+    /// <param name="url">The URL to query. Must not be null.</param>
     /// <returns>The response of the WebService</returns>
     /// <exception cref="SimpleHttpClientException"></exception>
     private async Task<HttpResponseMessage> QueryWebService(Uri url)
     {
+        if (url is null)
+        {
+            throw new ArgumentNullException(nameof(url));
+        }
+
         using var client = new HttpClient();
 
         try
